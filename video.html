@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BloxFlix Video Player</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: white;
+      font-family: 'Roboto Condensed', sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    header {
+      background: #111;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.7);
+    }
+    header img {
+      height: 32px;
+    }
+    header h1 {
+      margin: 0;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: #e50914;
+      user-select: none;
+    }
+    main {
+      flex-grow: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: black;
+    }
+    iframe {
+      width: 80vw;
+      height: 45vw;
+      max-width: 1280px;
+      max-height: 720px;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 0 20px #e50914;
+    }
+    #controls {
+      margin: 15px 20px;
+      text-align: center;
+    }
+    button {
+      background: #e50914;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      font-weight: 700;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 0 5px;
+      font-size: 1rem;
+    }
+    button:hover {
+      background: #f6121d;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/Roblox_Logo_2022.svg" alt="BloxFlix Logo" />
+    <h1>BloxFlix</h1>
+  </header>
+  <main>
+    <iframe id="video-player" allow="autoplay" allowfullscreen></iframe>
+  </main>
+  <div id="controls">
+    <button id="add-watchlist-btn">Add to Watchlist</button>
+    <button id="remove-watchlist-btn" style="display:none;">Remove from Watchlist</button>
+    <a href="index.html" style="color:#e50914; font-weight:700; text-decoration:none;">← Back to Home</a>
+  </div>
+
+  <script>
+    // Parse video ID from URL
+    const params = new URLSearchParams(window.location.search);
+    const videoId = params.get("id");
+
+    if (!videoId) {
+      alert("No video ID provided.");
+      window.location.href = "index.html";
+    }
+
+    const knownVideos = {
+      "1ZM6ztUlLWY": { title: "The Last Guest", category: "Action" },
+      "rA26KwGKp5w": { title: "The Bacon Hair", category: "Drama" },
+      "rxDV8ZALRVw": { title: "The Bacon Hair 2 (The Resistance)", category: "Drama" },
+      "YPJ5-m1Ur9A": { title: "The Bacon Hair 3 (The Guests)", category: "Drama" },
+      "p-fnLnCFcaM": { title: "Admins vs Hackers (A Roblox Action Story)", category: "Action" },
+      "lHKstsDHeBw": { title: "Blox Watch - A Roblox Horror Movie", category: "Horror" },
+      "nIJbjv72q6s": { title: "The Last Guest 2 (The Prodigy)", category: "Action" },
+      "utL9BXUf_zA": { title: "The Last Guest 3 (The Uprising)", category: "Action" },
+      "mgT6m_mnsjA": { title: "The Last Guest 4 (The Great War)", category: "Action" },
+      "3ybFXpzzHkM": { title: "Roblox Obby Challenge", category: "Adventure" },
+      "rK3h5J2e7b4": { title: "Roblox Speedrun", category: "Action" },
+      "JpNl7NbiPe4": { title: "Roblox Secrets", category: "Mystery" },
+      "DQy7UvzLUhY": { title: "Roblox Escape", category: "Horror" },
+      "8uK0-zRA9Oc": { title: "Roblox Roleplay 2", category: "Drama" },
+      "M4oEeo9sxWE": { title: "Roblox Cartoon", category: "Comedy" }
+    };
+
+    const videoPlayer = document.getElementById("video-player");
+    const addBtn = document.getElementById("add-watchlist-btn");
+    const removeBtn = document.getElementById("remove-watchlist-btn");
+
+    const profile = localStorage.getItem("bloxflix_currentProfile") || "default";
+
+    if (!knownVideos[videoId]) {
+      alert("Video not found!");
+      window.location.href = "index.html";
+    }
+
+    const videoData = knownVideos[videoId];
+
+    // Set video player src to embed YouTube with autoplay
+    videoPlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`;
+
+    // Save last watched for this profile
+    function saveLastWatched() {
+      const data = {
+        id: videoId,
+        title: videoData.title,
+        thumbnail: `https://img.youtube.com/vi/${videoId}/0.jpg`,
+        category: videoData.category
+      };
+      localStorage.setItem(`bloxflix_${profile}_lastWatched`, JSON.stringify(data));
+    }
+    saveLastWatched();
+
+    // Watchlist management
+    function getWatchlist() {
+      return JSON.parse(localStorage.getItem(`bloxflix_${profile}_watchlist`)) || [];
+    }
+    function saveWatchlist(watchlist) {
+      localStorage.setItem(`bloxflix_${profile}_watchlist`, JSON.stringify(watchlist));
+    }
+    function isInWatchlist() {
+      const wl = getWatchlist();
+      return wl.some(v => v.id === videoId);
+    }
+
+    function updateButtons() {
+      if (isInWatchlist()) {
+        addBtn.style.display = "none";
+        removeBtn.style.display = "inline-block";
+      } else {
+        addBtn.style.display = "inline-block";
+        removeBtn.style.display = "none";
+      }
+    }
+
+    addBtn.onclick = () => {
+      const wl = getWatchlist();
+      if (!isInWatchlist()) {
+        wl.push({
+          id: videoId,
+          title: videoData.title,
+          thumbnail: `https://img.youtube.com/vi/${videoId}/0.jpg`
+        });
+        saveWatchlist(wl);
+        updateButtons();
+        alert("Added to your watchlist!");
+      }
+    };
+
+    removeBtn.onclick = () => {
+      let wl = getWatchlist();
+      wl = wl.filter(v => v.id !== videoId);
+      saveWatchlist(wl);
+      updateButtons();
+      alert("Removed from your watchlist.");
+    };
+
+    updateButtons();
+  </script>
+</body>
+</html>
