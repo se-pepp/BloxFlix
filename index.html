@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>BloxFlix – Roblox Movies</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <h1>BloxFlix</h1>
+    </div>
+    <nav>
+      <a href="#">Home</a>
+      <a href="#">Categories</a>
+      <a href="#">Watchlist</a>
+    </nav>
+    <div id="profile-switcher" title="Switch Profile" tabindex="0" role="button" aria-label="Switch Profile">
+      <img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt="Profile Icon" />
+      <span id="current-profile-name"></span>
+    </div>
+  </header>
+
+  <main>
+    <section id="continue-section" class="row-section" style="display:none;">
+      <h2>Continue Watching</h2>
+      <div class="scroll-row" id="continue-box"></div>
+    </section>
+
+    <section class="hero-banner">
+      <img src="https://img.youtube.com/vi/kR4Krn3YzCc/maxresdefault.jpg" alt="The Last Guest Banner" />
+      <div class="hero-gradient"></div>
+      <div class="hero-text">
+        <h2>The Last Guest</h2>
+        <p>A legendary Roblox story about love, loss and bravery.</p>
+        <a href="video.html?id=kR4Krn3YzCc" class="btn-red">▶ Play</a>
+      </div>
+    </section>
+
+    <section id="watchlist-section" class="row-section" style="display:none;">
+      <h2>Your Watchlist</h2>
+      <div class="scroll-row" id="watchlist-box"></div>
+    </section>
+
+    <section id="recommended-section" class="row-section" style="display:none;">
+      <h2>Recommended for You</h2>
+      <div class="scroll-row" id="recommended-box"></div>
+    </section>
+
+    <div id="categories-container"></div>
+  </main>
+
+  <!-- Profile Picker Modal -->
+  <div id="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" tabindex="-1" hidden>
+    <div class="modal-content">
+      <h2 id="profile-modal-title">Select Profile</h2>
+      <div id="profiles-list"></div>
+      <div class="profile-actions">
+        <input type="text" id="new-profile-name" placeholder="New profile name" aria-label="New profile name" />
+        <button id="add-profile-btn" class="btn-red">Add Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const knownVideos = {
+      "1ZM6ztUlLWY": { title: "The Last Guest", category: "Action" },
+      "rA26KwGKp5w": { title: "The Bacon Hair", category: "Drama" },
+      "rxDV8ZALRVw": { title: "The Bacon Hair 2 (The Resistance)", category: "Drama" },
+      "YPJ5-m1Ur9A": { title: "The Bacon Hair 3 (The Guests)", category: "Drama" },
+      "p-fnLnCFcaM": { title: "Admins vs Hackers (A Roblox Action Story)", category: "Action" },
+      "lHKstsDHeBw": { title: "Blox Watch - A Roblox Horror Movie", category: "Horror" },
+      "nIJbjv72q6s": { title: "The Last Guest 2 (The Prodigy)", category: "Action" },
+      "utL9BXUf_zA": { title: "The Last Guest 3 (The Uprising)", category: "Action" },
+      "mgT6m_mnsjA": { title: "The Last Guest 4 (The Great War)", category: "Action" },
+      "3ybFXpzzHkM": { title: "Roblox Obby Challenge", category: "Adventure" },
+      "rK3h5J2e7b4": { title: "Roblox Speedrun", category: "Action" },
+      "JpNl7NbiPe4": { title: "Roblox Secrets", category: "Mystery" },
+      "DQy7UvzLUhY": { title: "Roblox Escape", category: "Horror" },
+      "8uK0-zRA9Oc": { title: "Roblox Roleplay 2", category: "Drama" },
+      "M4oEeo9sxWE": { title: "Roblox Cartoon", category: "Comedy" }
+    };
+
+    // Profile management keys
+    const profilesKey = "bloxflix_profiles";
+    const currentProfileKey = "bloxflix_currentProfile";
+
+    // Elements
+    const profileModal = document.getElementById("profile-modal");
+    const profilesList = document.getElementById("profiles-list");
+    const addProfileBtn = document.getElementById("add-profile-btn");
+    const newProfileNameInput = document.getElementById("new-profile-name");
+    const currentProfileNameEl = document.getElementById("current-profile-name");
+    const profileSwitcherBtn = document.getElementById("profile-switcher");
+
+    // Helper: Get profiles array from localStorage
+    function getProfiles() {
+      const p = localStorage.getItem(profilesKey);
+      return p ? JSON.parse(p) : [];
+    }
+
+    // Helper: Save profiles array
+    function saveProfiles(profiles) {
+      localStorage.setItem(profilesKey, JSON.stringify(profiles));
+    }
+
+    // Helper: Get current profile
+    function getCurrentProfile() {
+      return localStorage.getItem(currentProfileKey);
+    }
+
+    // Helper: Set current profile
+    function setCurrentProfile(name) {
+      localStorage.setItem(currentProfileKey, name);
+      currentProfileNameEl.textContent = name;
+    }
+
+    // Show profile modal and populate profiles list
+    function showProfileModal() {
+      profilesList.innerHTML = "";
+      const profiles = getProfiles();
+      profiles.forEach(name => {
+        const pDiv = document.createElement("div");
+        pDiv.className = "profile-item";
+        pDiv.textContent = name;
+
+        // Click to select profile
+        pDiv.onclick = () => {
+          setCurrentProfile(name);
+          profileModal.hidden = true;
+          loadProfileData(name);
+        };
+
+        // Delete button
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "×";
+        delBtn.title = "Delete Profile";
+        delBtn.className = "delete-profile-btn";
+        delBtn.onclick = e => {
+          e.stopPropagation();
+          if (confirm(`Delete profile "${name}"? This cannot be undone.`)) {
+            deleteProfile(name);
+          }
+        };
+        pDiv.appendChild(delBtn);
+
+        profilesList.appendChild(pDiv);
+      });
+
+      profileModal.hidden = false;
+      newProfileNameInput.value = "";
+      newProfileNameInput.focus();
+    }
+
+    // Add new profile
+    addProfileBtn.onclick = () => {
+      let newName = newProfileNameInput.value.trim();
+      if (!newName) {
+        alert("Profile name cannot be empty.");
+        return;
+      }
+      const profiles = getProfiles();
+      if (profiles.includes(newName)) {
+        alert("Profile name already exists.");
+        return;
+      }
+      profiles.push(newName);
+      saveProfiles(profiles);
+      setCurrentProfile(newName);
+      profileModal.hidden = true;
+      loadProfileData(newName);
+    };
+
+    // Delete profile
+    function deleteProfile(name) {
+      let profiles = getProfiles();
+      profiles = profiles.filter(p => p !== name);
+      saveProfiles(profiles);
+
+      // Remove data keys for that profile
+      localStorage.removeItem(`bloxflix_${name}_watchlist`);
+      localStorage.removeItem(`bloxflix_${name}_lastWatched`);
+
+      // If deleted profile was current, reset current
+      if (getCurrentProfile() === name) {
+        if (profiles.length > 0) {
+          setCurrentProfile(profiles[0]);
+          loadProfileData(profiles[0]);
+        } else {
+          localStorage.removeItem(currentProfileKey);
+          showProfileModal();
+        }
+      } else {
+        showProfileModal();
+      }
+    }
+
+    // Load watchlist and lastWatched for profile, update UI
+    function loadProfileData(profileName) {
+      currentProfileNameEl.textContent = profileName;
+
+      // Load lastWatched for continue watching
+      const last = JSON.parse(localStorage.getItem(`bloxflix_${profileName}_lastWatched`));
+      const continueBox = document.getElementById("continue-box");
+      if (last) {
+        continueBox.innerHTML = `
+          <a href="video.html?id=${last.id}" class="card" aria-label="Continue watching ${last.title}">
+            <img src="${last.thumbnail}" alt="${last.title} thumbnail" />
+            <div class="overlay">${last.title}</div>
+          </a>`;
+        document.getElementById("continue-section").style.display = "block";
+      } else {
+        continueBox.innerHTML = "";
+        document.getElementById("continue-section").style.display = "none";
+      }
+
+      // Load watchlist
+      const watchlist = JSON.parse(localStorage.getItem(`bloxflix_${profileName}_watchlist`)) || [];
+      const watchlistBox = document.getElementById("watchlist-box");
+      if (watchlist.length) {
+        watchlistBox.innerHTML = "";
+        watchlist.forEach(v => {
+          watchlistBox.innerHTML += `
+            <a href="video.html?id=${v.id}" class="card" aria-label="Watchlist item ${v.title}">
+              <img src="${v.thumbnail}" alt="${v.title} thumbnail" />
+              <div class="overlay">${v.title}</div>
+            </a>`;
+        });
+        document.getElementById("watchlist-section").style.display = "block";
+      } else {
+        watchlistBox.innerHTML = "";
+        document.getElementById("watchlist-section").style.display = "none";
+      }
+
+      // Recommended videos (same category as last watched)
+      const recommendedBox = document.getElementById("recommended-box");
+      recommendedBox.innerHTML = "";
+      if (last && last.category) {
+        Object.entries(knownVideos).forEach(([id, data]) => {
+          if (data.category === last.category && id !== last.id) {
+            recommendedBox.innerHTML += `
+              <a href="video.html?id=${id}" class="card" aria-label="Recommended video ${data.title}">
+                <img src="https://img.youtube.com/vi/${id}/0.jpg" alt="${data.title} thumbnail" />
+                <div class="overlay">${data.title}</div>
+              </a>`;
+          }
+        });
+        if (recommendedBox.innerHTML) {
+          document.getElementById("recommended-section").style.display = "block";
+        } else {
+          document.getElementById("recommended-section").style.display = "none";
+        }
+      } else {
+        document.getElementById("recommended-section").style.display = "none";
+      }
+
+      // Categories container is always visible
+      buildCategoriesUI();
+    }
+
+    // Build categories rows
+    function buildCategoriesUI() {
+      const categoriesContainer = document.getElementById("categories-container");
+      categoriesContainer.innerHTML = "";
+      const categories = [...new Set(Object.values(knownVideos).map(v => v.category))];
+      categories.forEach(category => {
+        const section = document.createElement("section");
+        section.className = "row-section";
+
+        const heading = document.createElement("h2");
+        heading.textContent = category;
+        section.appendChild(heading);
+
+        const scrollRow = document.createElement("div");
+        scrollRow.className = "scroll-row";
+
+        Object.entries(knownVideos)
+          .filter(([id, video]) => video.category === category)
+          .forEach(([id, video]) => {
+            const card = document.createElement("a");
+            card.className = "card";
+            card.href = `video.html?id=${id}`;
+            card.setAttribute('aria-label', video.title);
+
+            const img = document.createElement("img");
+            img.src = `https://img.youtube.com/vi/${id}/0.jpg`;
+            img.alt = `${video.title} thumbnail`;
+            card.appendChild(img);
+
+            const overlay = document.createElement("div");
+            overlay.className = "overlay";
+            overlay.textContent = video.title;
+            card.appendChild(overlay);
+
+            scrollRow.appendChild(card);
+          });
+
+        section.appendChild(scrollRow);
+        categoriesContainer.appendChild(section);
+      });
+    }
+
+    // On page load:
+    function init() {
+      let profiles = getProfiles();
+      let currentProfile = getCurrentProfile();
+
+      if (!profiles.length) {
+        // No profiles - show profile modal to create
+        showProfileModal();
+      } else if (!currentProfile || !profiles.includes(currentProfile)) {
+        // No current profile set or invalid - pick first profile
+        setCurrentProfile(profiles[0]);
+        loadProfileData(profiles[0]);
+      } else {
+        loadProfileData(currentProfile);
+      }
+    }
+
+    // Profile switcher button click
+    profileSwitcherBtn.onclick = () => {
+      showProfileModal();
+    };
+
+    // Save lastWatched and watchlist on video.html (you'll also update video.html to use profiles)
+    // We'll update video.html similarly, to save per profile!
+
+    init();
+  </script>
+</body>
+</html>
